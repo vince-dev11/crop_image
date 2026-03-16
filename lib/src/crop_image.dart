@@ -521,6 +521,7 @@ class _RotatedImagePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+
     final double width = size.width;
     final double height = size.height;
 
@@ -528,30 +529,46 @@ class _RotatedImagePainter extends CustomPainter {
 
     canvas.save();
 
-    /// Move canvas to center
+    /// move canvas to center
     canvas.translate(center.dx, center.dy);
 
-    /// Rotate
+    /// rotate
     canvas.rotate(rotation.radians);
 
-    /// Move back
-    canvas.translate(-center.dx, -center.dy);
+    /// calculate aspect ratios
+    final double imageRatio = image.width / image.height;
+    final double canvasRatio = width / height;
 
-    /// Draw image
+    double drawWidth;
+    double drawHeight;
+
+    /// maintain image ratio
+    if (imageRatio > canvasRatio) {
+      drawWidth = width;
+      drawHeight = width / imageRatio;
+    } else {
+      drawHeight = height;
+      drawWidth = height * imageRatio;
+    }
+
+    /// draw centered image
+    final Rect dstRect = Rect.fromCenter(
+      center: Offset.zero,
+      width: drawWidth,
+      height: drawHeight,
+    );
+
+    final Rect srcRect = Rect.fromLTWH(
+      0,
+      0,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+
     canvas.drawImageRect(
       image,
-      Rect.fromLTWH(
-        0,
-        0,
-        image.width.toDouble(),
-        image.height.toDouble(),
-      ),
-      Rect.fromLTWH(
-        0,
-        0,
-        width,
-        height,
-      ),
+      srcRect,
+      dstRect,
       _paint,
     );
 
