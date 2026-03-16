@@ -313,13 +313,15 @@ class _CropImageState extends State<CropImage> {
             return Stack(
               alignment: Alignment.center,
               children: <Widget>[
-                SizedBox(
-                  width: width,
-                  height: height,
-                  child: CustomPaint(
-                    painter: _RotatedImagePainter(
-                      controller.getImage()!,
-                      controller.rotation,
+                ClipRRect(
+                  child: SizedBox(
+                    width: width,
+                    height: height,
+                    child: CustomPaint(
+                      painter: _RotatedImagePainter(
+                        controller.getImage()!,
+                        controller.rotation,
+                      ),
                     ),
                   ),
                 ),
@@ -613,31 +615,33 @@ class _RotatedImagePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
+    final angle = rotation.radians;
 
-    final double angle = rotation.radians;
+    final imageSize = Size(
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
 
-    // center of canvas
-    final Offset center = Offset(size.width / 2, size.height / 2);
+    final fitted = applyBoxFit(
+      BoxFit.contain,
+      imageSize,
+      size,
+    );
+
+    final inputSubrect =
+        Alignment.center.inscribe(fitted.source, Offset.zero & imageSize);
+    final outputSubrect =
+        Alignment.center.inscribe(fitted.destination, Offset.zero & size);
 
     canvas.save();
 
-    // move origin to center
+    final center = size.center(Offset.zero);
+
     canvas.translate(center.dx, center.dy);
-
-    // rotate around center
     canvas.rotate(angle);
+    canvas.translate(-center.dx, -center.dy);
 
-    // draw image centered
-    final Rect src =
-        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
-
-    final Rect dst = Rect.fromCenter(
-      center: Offset.zero,
-      width: size.width,
-      height: size.height,
-    );
-
-    canvas.drawImageRect(image, src, dst, paint);
+    canvas.drawImageRect(image, inputSubrect, outputSubrect, paint);
 
     canvas.restore();
   }
