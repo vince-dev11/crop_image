@@ -520,60 +520,52 @@ class _RotatedImagePainter extends CustomPainter {
   final Paint _paint = Paint()..filterQuality = FilterQuality.high;
 
   @override
-  void paint(Canvas canvas, Size size) {
+void paint(Canvas canvas, Size size) {
+  final center = Offset(size.width / 2, size.height / 2);
 
-    final double width = size.width;
-    final double height = size.height;
+  canvas.save();
 
-    final center = Offset(width / 2, height / 2);
+  /// move to center
+  canvas.translate(center.dx, center.dy);
 
-    canvas.save();
+  /// rotate
+  canvas.rotate(rotation.radians);
 
-    /// move canvas to center
-    canvas.translate(center.dx, center.dy);
+  /// calculate scale so rotated image fills canvas
+  final imageRatio = image.width / image.height;
+  final canvasRatio = size.width / size.height;
 
-    /// rotate
-    canvas.rotate(rotation.radians);
+  double drawWidth;
+  double drawHeight;
 
-    /// calculate aspect ratios
-    final double imageRatio = image.width / image.height;
-    final double canvasRatio = width / height;
+  if (imageRatio > canvasRatio) {
+    drawHeight = size.height;
+    drawWidth = drawHeight * imageRatio;
+  } else {
+    drawWidth = size.width;
+    drawHeight = drawWidth / imageRatio;
+  }
 
-    double drawWidth;
-    double drawHeight;
+  final rect = Rect.fromCenter(
+    center: Offset.zero,
+    width: drawWidth,
+    height: drawHeight,
+  );
 
-    /// maintain image ratio
-    if (imageRatio > canvasRatio) {
-      drawWidth = width;
-      drawHeight = width / imageRatio;
-    } else {
-      drawHeight = height;
-      drawWidth = height * imageRatio;
-    }
-
-    /// draw centered image
-    final Rect dstRect = Rect.fromCenter(
-      center: Offset.zero,
-      width: drawWidth,
-      height: drawHeight,
-    );
-
-    final Rect srcRect = Rect.fromLTWH(
+  canvas.drawImageRect(
+    image,
+    Rect.fromLTWH(
       0,
       0,
       image.width.toDouble(),
       image.height.toDouble(),
-    );
+    ),
+    rect,
+    _paint,
+  );
 
-    canvas.drawImageRect(
-      image,
-      srcRect,
-      dstRect,
-      _paint,
-    );
-
-    canvas.restore();
-  }
+  canvas.restore();
+}
 
   @override
   bool shouldRepaint(covariant _RotatedImagePainter oldDelegate) {
