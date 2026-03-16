@@ -1,7 +1,11 @@
+import 'dart:ui' as ui;
+
 import 'package:crop_image/crop_image.dart';
 import 'package:flutter/material.dart';
 
-void main() => runApp(const MyApp());
+void main() {
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -26,127 +30,222 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final controller = CropController(
-    aspectRatio: 0.7,
+
+  final CropController controller = CropController(
+    aspectRatio: 1,
     defaultCrop: const Rect.fromLTRB(0.1, 0.1, 0.9, 0.9),
   );
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: Center(
-          child: CropImage(
-            controller: controller,
-            image: Image.asset('assets/08272011229.jpg'),
-            paddingSize: 25.0,
-            alwaysMove: true,
-            maximumImageSize: 500,
-          ),
-        ),
-        bottomNavigationBar: _buildButtons(),
-      );
+  double rotationValue = 0;
 
-  Widget _buildButtons() => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        crossAxisAlignment: CrossAxisAlignment.center,
+  ui.Image? croppedImage;
+
+  @override
+  Widget build(BuildContext context) {
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+
+      body: Column(
         children: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () {
-              controller.rotation = CropRotation.up;
-              controller.crop = const Rect.fromLTRB(0.1, 0.1, 0.9, 0.9);
-              controller.aspectRatio = 1.0;
-            },
+
+          Expanded(
+            child: CropImage(
+              controller: controller,
+              image: Image.asset('assets/sample.jpg'),
+              paddingSize: 25,
+              alwaysMove: true,
+              maximumImageSize: 500,
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.aspect_ratio),
-            onPressed: _aspectRatios,
+
+          const SizedBox(height: 10),
+
+          /// ROTATION SLIDER
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+
+                const Text("Rotation"),
+
+                Slider(
+                  min: -45,
+                  max: 45,
+                  value: rotationValue,
+                  onChanged: (v) {
+
+                    setState(() {
+                      rotationValue = v;
+                    });
+
+                    controller.rotate(v);
+                  },
+                ),
+              ],
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.rotate_90_degrees_ccw_outlined),
-            onPressed: _rotateLeft,
-          ),
-          IconButton(
-            icon: const Icon(Icons.rotate_90_degrees_cw_outlined),
-            onPressed: _rotateRight,
-          ),
-          TextButton(
-            onPressed: _finished,
-            child: const Text('Done'),
-          ),
+
+          const SizedBox(height: 10),
+
+          _buildButtons(),
+
+          const SizedBox(height: 10),
+
+          if (croppedImage != null)
+            SizedBox(
+              height: 200,
+              child: Image(
+                image: UiImageProvider(croppedImage!),
+              ),
+            ),
+
+          const SizedBox(height: 20),
         ],
-      );
+      ),
+    );
+  }
+
+  Widget _buildButtons() {
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+
+        /// RESET
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () {
+
+            controller.rotation = const CropRotation(0);
+            controller.crop = const Rect.fromLTRB(0.1, 0.1, 0.9, 0.9);
+            controller.aspectRatio = 1;
+
+            setState(() {
+              rotationValue = 0;
+            });
+          },
+        ),
+
+        /// ASPECT RATIO
+        IconButton(
+          icon: const Icon(Icons.aspect_ratio),
+          onPressed: _aspectRatios,
+        ),
+
+        /// ROTATE LEFT
+        IconButton(
+          icon: const Icon(Icons.rotate_left),
+          onPressed: () {
+
+            controller.rotateLeft(5);
+
+            setState(() {
+              rotationValue -= 5;
+            });
+          },
+        ),
+
+        /// ROTATE RIGHT
+        IconButton(
+          icon: const Icon(Icons.rotate_right),
+          onPressed: () {
+
+            controller.rotateRight(5);
+
+            setState(() {
+              rotationValue += 5;
+            });
+          },
+        ),
+
+        /// CROP
+        TextButton(
+          onPressed: _finished,
+          child: const Text('Done'),
+        ),
+      ],
+    );
+  }
 
   Future<void> _aspectRatios() async {
+
     final value = await showDialog<double>(
       context: context,
       builder: (context) {
+
         return SimpleDialog(
           title: const Text('Select aspect ratio'),
           children: [
-            // special case: no aspect ratio
+
             SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, -1.0),
-              child: const Text('free'),
+              onPressed: () => Navigator.pop(context, -1),
+              child: const Text('Free'),
             ),
+
             SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, 1.0),
-              child: const Text('square'),
+              onPressed: () => Navigator.pop(context, 1),
+              child: const Text('Square'),
             ),
+
             SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, 2.0),
+              onPressed: () => Navigator.pop(context, 2),
               child: const Text('2:1'),
             ),
+
             SimpleDialogOption(
               onPressed: () => Navigator.pop(context, 1 / 2),
               child: const Text('1:2'),
             ),
+
             SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, 4.0 / 3.0),
+              onPressed: () => Navigator.pop(context, 4 / 3),
               child: const Text('4:3'),
             ),
+
             SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, 16.0 / 9.0),
+              onPressed: () => Navigator.pop(context, 16 / 9),
               child: const Text('16:9'),
             ),
           ],
         );
       },
     );
+
     if (value != null) {
+
       controller.aspectRatio = value == -1 ? null : value;
+
       controller.crop = const Rect.fromLTRB(0.1, 0.1, 0.9, 0.9);
     }
   }
 
-  Future<void> _rotateLeft() async => controller.rotateLeft();
-
-  Future<void> _rotateRight() async => controller.rotateRight();
-
   Future<void> _finished() async {
-    final image = await controller.croppedImage();
-    if (mounted)
-      await showDialog<bool>(
-        context: context,
-        builder: (context) {
-          return SimpleDialog(
-            contentPadding: const EdgeInsets.all(6.0),
-            titlePadding: const EdgeInsets.all(8.0),
-            title: const Text('Cropped image'),
-            children: [
-              Text('relative: ${controller.crop}'),
-              Text('pixels: ${controller.cropSize}'),
-              const SizedBox(height: 5),
-              image,
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+
+    final image = await controller.croppedBitmap();
+
+    setState(() {
+      croppedImage = image;
+    });
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+
+        return AlertDialog(
+          title: const Text("Cropped Image"),
+          content: SizedBox(
+            height: 250,
+            child: Image(
+              image: UiImageProvider(image),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

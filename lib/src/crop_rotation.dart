@@ -1,119 +1,72 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
-/// 90 degree rotations.
-enum CropRotation {
-  up,
-  right,
-  down,
-  left,
-}
+import 'package:flutter/material.dart';
 
-extension CropRotationExtension on CropRotation {
-  /// Returns the rotation in radians cw.
-  double get radians {
-    switch (this) {
-      case CropRotation.up:
-        return 0;
-      case CropRotation.right:
-        return math.pi / 2;
-      case CropRotation.down:
-        return math.pi;
-      case CropRotation.left:
-        return 3 * math.pi / 2;
-    }
+/// Rotation class supporting ANY angle
+class CropRotation {
+  final double degrees;
+
+  const CropRotation(this.degrees);
+
+  /// Convert degrees to radians
+  double get radians => degrees * math.pi / 180;
+
+  /// Rotate right by given amount (default 90)
+  CropRotation rotateRight([double amount = 90]) {
+    return CropRotation(degrees + amount);
   }
 
-  /// Returns the rotation in degrees cw.
-  int get degrees {
-    switch (this) {
-      case CropRotation.up:
-        return 0;
-      case CropRotation.right:
-        return 90;
-      case CropRotation.down:
-        return 180;
-      case CropRotation.left:
-        return 270;
-    }
+  /// Rotate left by given amount (default 90)
+  CropRotation rotateLeft([double amount = 90]) {
+    return CropRotation(degrees - amount);
   }
 
-  static CropRotation? fromDegrees(final int degrees) {
-    for (final CropRotation rotation in CropRotation.values) {
-      if (rotation.degrees == degrees) {
-        return rotation;
-      }
-    }
-    return null;
-  }
-
-  /// Returns the rotation rotated 90 degrees to the right.
-  CropRotation get rotateRight {
-    switch (this) {
-      case CropRotation.up:
-        return CropRotation.right;
-      case CropRotation.right:
-        return CropRotation.down;
-      case CropRotation.down:
-        return CropRotation.left;
-      case CropRotation.left:
-        return CropRotation.up;
-    }
-  }
-
-  /// Returns the rotation rotated 90 degrees to the left.
-  CropRotation get rotateLeft {
-    switch (this) {
-      case CropRotation.up:
-        return CropRotation.left;
-      case CropRotation.left:
-        return CropRotation.down;
-      case CropRotation.down:
-        return CropRotation.right;
-      case CropRotation.right:
-        return CropRotation.up;
-    }
-  }
-
-  /// Returns true if the rotated width is the initial height.
+  /// Returns true if image is sideways
   bool get isSideways {
-    switch (this) {
-      case CropRotation.up:
-      case CropRotation.down:
-        return false;
-      case CropRotation.right:
-      case CropRotation.left:
-        return true;
-    }
+    final normalized = degrees % 180;
+    return normalized != 0;
   }
 
-  /// Returns the offset as rotated.
+  /// Rotate a point around image center
   Offset getRotatedOffset(
-    final Offset offset01,
-    final double straightWidth,
-    final double straightHeight,
+    Offset offset01,
+    double width,
+    double height,
   ) {
-    switch (this) {
-      case CropRotation.up:
-        return Offset(
-          straightWidth * offset01.dx,
-          straightHeight * offset01.dy,
-        );
-      case CropRotation.down:
-        return Offset(
-          straightWidth * (1 - offset01.dx),
-          straightHeight * (1 - offset01.dy),
-        );
-      case CropRotation.right:
-        return Offset(
-          straightWidth * offset01.dy,
-          straightHeight * (1 - offset01.dx),
-        );
-      case CropRotation.left:
-        return Offset(
-          straightWidth * (1 - offset01.dy),
-          straightHeight * offset01.dx,
-        );
-    }
+    final center = Offset(width / 2, height / 2);
+
+    final point = Offset(
+      offset01.dx * width,
+      offset01.dy * height,
+    );
+
+    final translated = point - center;
+
+    final cosA = math.cos(radians);
+    final sinA = math.sin(radians);
+
+    final rotated = Offset(
+      translated.dx * cosA - translated.dy * sinA,
+      translated.dx * sinA + translated.dy * cosA,
+    );
+
+    return rotated + center;
+  }
+
+  /// Normalize degrees between 0-360
+  double get normalizedDegrees {
+    double deg = degrees % 360;
+    if (deg < 0) deg += 360;
+    return deg;
+  }
+
+  /// Create rotation from degrees
+  factory CropRotation.fromDegrees(double deg) {
+    return CropRotation(deg);
+  }
+
+  @override
+  String toString() {
+    return "CropRotation($degrees°)";
   }
 }

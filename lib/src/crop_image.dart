@@ -1,12 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
 import 'crop_controller.dart';
 import 'crop_grid.dart';
 import 'crop_rect.dart';
 import 'crop_rotation.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 /// Widget to crop images.
 ///
@@ -516,40 +517,50 @@ class _RotatedImagePainter extends CustomPainter {
   final ui.Image image;
   final CropRotation rotation;
 
-  final Paint _paint = Paint();
+  final Paint _paint = Paint()..filterQuality = FilterQuality.high;
 
   @override
   void paint(Canvas canvas, Size size) {
-    double targetWidth = size.width;
-    double targetHeight = size.height;
-    double offset = 0;
-    if (rotation != CropRotation.up) {
-      if (rotation.isSideways) {
-        final double tmp = targetHeight;
-        targetHeight = targetWidth;
-        targetWidth = tmp;
-        offset = (targetWidth - targetHeight) / 2;
-        if (rotation == CropRotation.left) {
-          offset = -offset;
-        }
-      }
-      canvas.save();
-      canvas.translate(targetWidth / 2, targetHeight / 2);
-      canvas.rotate(rotation.radians);
-      canvas.translate(-targetWidth / 2, -targetHeight / 2);
-    }
-    _paint.filterQuality = FilterQuality.high;
+    final double width = size.width;
+    final double height = size.height;
+
+    final center = Offset(width / 2, height / 2);
+
+    canvas.save();
+
+    /// Move canvas to center
+    canvas.translate(center.dx, center.dy);
+
+    /// Rotate
+    canvas.rotate(rotation.radians);
+
+    /// Move back
+    canvas.translate(-center.dx, -center.dy);
+
+    /// Draw image
     canvas.drawImageRect(
       image,
-      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
-      Rect.fromLTWH(offset, offset, targetWidth, targetHeight),
+      Rect.fromLTWH(
+        0,
+        0,
+        image.width.toDouble(),
+        image.height.toDouble(),
+      ),
+      Rect.fromLTWH(
+        0,
+        0,
+        width,
+        height,
+      ),
       _paint,
     );
-    if (rotation != CropRotation.up) {
-      canvas.restore();
-    }
+
+    canvas.restore();
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _RotatedImagePainter oldDelegate) {
+    return oldDelegate.rotation.degrees != rotation.degrees ||
+        oldDelegate.image != image;
+  }
 }

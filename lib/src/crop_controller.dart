@@ -1,9 +1,11 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import 'crop_rect.dart';
 import 'crop_rotation.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 /// A controller to control the functionality of [CropImage].
 class CropController extends ValueNotifier<CropControllerValue> {
@@ -49,34 +51,79 @@ class CropController extends ValueNotifier<CropControllerValue> {
 
   CropRotation get rotation => value.rotation;
 
-  set rotation(CropRotation rotation) {
-    value = value.copyWith(rotation: rotation);
-    notifyListeners();
-  }
+set rotation(CropRotation rotation) {
+  value = value.copyWith(rotation: rotation);
+  notifyListeners();
+}
 
-  void rotateRight() => _rotate(left: false);
+void rotateRight([double amount = 5]) => _rotate(left: false, amount: amount);
 
-  void rotateLeft() => _rotate(left: true);
+void rotateLeft([double amount = 5]) => _rotate(left: true, amount: amount);
 
-  void _rotate({required final bool left}) {
-    final CropRotation newRotation = left ? value.rotation.rotateLeft : value.rotation.rotateRight;
-    final Offset newCenter = left ? Offset(crop.center.dy, 1 - crop.center.dx) : Offset(1 - crop.center.dy, crop.center.dx);
-    value = CropControllerValue(
-      aspectRatio,
-      _adjustRatio(
-        Rect.fromCenter(
-          center: newCenter,
-          width: crop.height,
-          height: crop.width,
-        ),
-        aspectRatio,
-        rotation: newRotation,
+void rotate(double degrees) {
+  rotation = CropRotation(degrees);
+}
+
+  // void _rotate({required final bool left}) {
+  //   final CropRotation newRotation = left ? value.rotation.rotateLeft : value.rotation.rotateRight;
+  //   final Offset newCenter = left ? Offset(crop.center.dy, 1 - crop.center.dx) : Offset(1 - crop.center.dy, crop.center.dx);
+  //   value = CropControllerValue(
+  //     aspectRatio,
+  //     _adjustRatio(
+  //       Rect.fromCenter(
+  //         center: newCenter,
+  //         width: crop.height,
+  //         height: crop.width,
+  //       ),
+  //       aspectRatio,
+  //       rotation: newRotation,
+  //     ),
+  //     newRotation,
+  //     value.minimumImageSize,
+  //   );
+  //   notifyListeners();
+  // }
+
+  void _rotate({required bool left, double amount = 5}) {
+  final double degrees = left ? -amount : amount;
+
+  final CropRotation newRotation =
+      CropRotation(value.rotation.degrees + degrees);
+
+  final Offset center = crop.center;
+
+  final Offset pivot = const Offset(0.5, 0.5);
+
+  final double radians = degrees * math.pi / 180;
+
+  final double cosA = math.cos(radians);
+  final double sinA = math.sin(radians);
+
+  final double dx = center.dx - pivot.dx;
+  final double dy = center.dy - pivot.dy;
+
+  final Offset newCenter = Offset(
+    pivot.dx + dx * cosA - dy * sinA,
+    pivot.dy + dx * sinA + dy * cosA,
+  );
+
+  value = CropControllerValue(
+    aspectRatio,
+    _adjustRatio(
+      Rect.fromCenter(
+        center: newCenter,
+        width: crop.width,
+        height: crop.height,
       ),
-      newRotation,
-      value.minimumImageSize,
-    );
-    notifyListeners();
-  }
+      aspectRatio,
+      rotation: newRotation,
+    ),
+    newRotation,
+    value.minimumImageSize,
+  );
+
+  notifyListeners();
+}
 
   /// Current crop rectangle of the image (pixels).
   ///
@@ -116,23 +163,25 @@ class CropController extends ValueNotifier<CropControllerValue> {
   /// Remember to [dispose] of the [CropController] when it's no longer needed.
   /// This will ensure we discard any resources used by the object.
   CropController({
-    double? aspectRatio,
-    Rect defaultCrop = const Rect.fromLTWH(0, 0, 1, 1),
-    CropRotation rotation = CropRotation.up,
-    double minimumImageSize = 100,
-  })  : assert(aspectRatio != 0, 'aspectRatio cannot be zero'),
-        assert(defaultCrop.left >= 0 && defaultCrop.left <= 1, 'left should be 0..1'),
-        assert(defaultCrop.right >= 0 && defaultCrop.right <= 1, 'right should be 0..1'),
-        assert(defaultCrop.top >= 0 && defaultCrop.top <= 1, 'top should be 0..1'),
-        assert(defaultCrop.bottom >= 0 && defaultCrop.bottom <= 1, 'bottom should be 0..1'),
-        assert(defaultCrop.left < defaultCrop.right, 'left must be less than right'),
-        assert(defaultCrop.top < defaultCrop.bottom, 'top must be less than bottom'),
-        super(CropControllerValue(
+  double? aspectRatio,
+  Rect defaultCrop = const Rect.fromLTWH(0, 0, 1, 1),
+  CropRotation rotation = const CropRotation(0),
+  double minimumImageSize = 100,
+})  : assert(aspectRatio != 0, 'aspectRatio cannot be zero'),
+      assert(defaultCrop.left >= 0 && defaultCrop.left <= 1, 'left should be 0..1'),
+      assert(defaultCrop.right >= 0 && defaultCrop.right <= 1, 'right should be 0..1'),
+      assert(defaultCrop.top >= 0 && defaultCrop.top <= 1, 'top should be 0..1'),
+      assert(defaultCrop.bottom >= 0 && defaultCrop.bottom <= 1, 'bottom should be 0..1'),
+      assert(defaultCrop.left < defaultCrop.right, 'left must be less than right'),
+      assert(defaultCrop.top < defaultCrop.bottom, 'top must be less than bottom'),
+      super(
+        CropControllerValue(
           aspectRatio,
           defaultCrop,
           rotation,
           minimumImageSize,
-        ));
+        ),
+      );
 
   /// Creates a controller for a [CropImage] widget from an initial [CropControllerValue].
   CropController.fromValue(super.value);
@@ -201,97 +250,75 @@ class CropController extends ValueNotifier<CropControllerValue> {
   /// The [crop] `Rect` is normalized to (0, 0) x (1, 1).
   /// You can provide the [quality] used in the resizing operation.
   static Future<ui.Image> getCroppedBitmap({
-    final double? maxSize,
-    final ui.FilterQuality quality = FilterQuality.high,
-    required final Rect crop,
-    required final CropRotation rotation,
-    required final ui.Image image,
-    final CustomPainter? overlayPainter,
-  }) async {
-    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(pictureRecorder);
+  final double? maxSize,
+  final ui.FilterQuality quality = FilterQuality.high,
+  required final Rect crop,
+  required final CropRotation rotation,
+  required final ui.Image image,
+  final CustomPainter? overlayPainter,
+}) async {
+  final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+  final Canvas canvas = Canvas(pictureRecorder);
 
-    final bool tilted = rotation.isSideways;
-    final double cropWidth;
-    final double cropHeight;
-    if (tilted) {
-      cropWidth = crop.width * image.height;
-      cropHeight = crop.height * image.width;
-    } else {
-      cropWidth = crop.width * image.width;
-      cropHeight = crop.height * image.height;
-    }
-    // factor between the full size and the maxSize constraint.
-    double factor = 1;
-    if (maxSize != null) {
-      if (cropWidth > maxSize || cropHeight > maxSize) {
-        if (cropWidth >= cropHeight) {
-          factor = maxSize / cropWidth;
-        } else {
-          factor = maxSize / cropHeight;
-        }
+  final double cropWidth = crop.width * image.width;
+  final double cropHeight = crop.height * image.height;
+
+  double factor = 1;
+
+  if (maxSize != null) {
+    if (cropWidth > maxSize || cropHeight > maxSize) {
+      if (cropWidth >= cropHeight) {
+        factor = maxSize / cropWidth;
+      } else {
+        factor = maxSize / cropHeight;
       }
     }
-
-    final Offset cropCenter = rotation.getRotatedOffset(
-      crop.center,
-      image.width.toDouble(),
-      image.height.toDouble(),
-    );
-
-    final double alternateWidth = tilted ? cropHeight : cropWidth;
-    final double alternateHeight = tilted ? cropWidth : cropHeight;
-    if (rotation != CropRotation.up) {
-      canvas.save();
-      final double x = alternateWidth / 2 * factor;
-      final double y = alternateHeight / 2 * factor;
-      canvas.translate(x, y);
-      canvas.rotate(rotation.radians);
-      if (rotation == CropRotation.right) {
-        canvas.translate(
-          -y,
-          -cropWidth * factor + x,
-        );
-      } else if (rotation == CropRotation.left) {
-        canvas.translate(
-          y - cropHeight * factor,
-          -x,
-        );
-      } else if (rotation == CropRotation.down) {
-        canvas.translate(-x, -y);
-      }
-    }
-
-    canvas.drawImageRect(
-      image,
-      Rect.fromCenter(
-        center: cropCenter,
-        width: alternateWidth,
-        height: alternateHeight,
-      ),
-      Rect.fromLTWH(
-        0,
-        0,
-        alternateWidth * factor,
-        alternateHeight * factor,
-      ),
-      Paint()..filterQuality = quality,
-    );
-
-    if (rotation != CropRotation.up) {
-      canvas.restore();
-    }
-
-    final double outputWidth = cropWidth * factor;
-    final double outputHeight = cropHeight * factor;
-    overlayPainter?.paint(canvas, ui.Size(outputWidth, outputHeight));
-
-    //FIXME Picture.toImage() crashes on Flutter Web with the HTML renderer. Use CanvasKit or avoid this operation for now. https://github.com/flutter/engine/pull/20750
-    return await pictureRecorder.endRecording().toImage(
-          outputWidth.round(),
-          outputHeight.round(),
-        );
   }
+
+  final Offset cropCenter = Offset(
+    crop.center.dx * image.width,
+    crop.center.dy * image.height,
+  );
+
+  final double outputWidth = cropWidth * factor;
+  final double outputHeight = cropHeight * factor;
+
+  canvas.save();
+
+  // move canvas to center
+  canvas.translate(outputWidth / 2, outputHeight / 2);
+
+  // rotate canvas
+  canvas.rotate(rotation.radians);
+
+  // move back
+  canvas.translate(-outputWidth / 2, -outputHeight / 2);
+
+  canvas.drawImageRect(
+    image,
+    Rect.fromCenter(
+      center: cropCenter,
+      width: cropWidth,
+      height: cropHeight,
+    ),
+    Rect.fromLTWH(
+      0,
+      0,
+      outputWidth,
+      outputHeight,
+    ),
+    Paint()..filterQuality = quality,
+  );
+
+  canvas.restore();
+
+  overlayPainter?.paint(canvas, ui.Size(outputWidth, outputHeight));
+
+  return await pictureRecorder.endRecording().toImage(
+        outputWidth.round(),
+        outputHeight.round(),
+      );
+}
 
   /// Returns the image cropped with the current crop rectangle.
   ///
