@@ -242,7 +242,6 @@ class _CropImageState extends State<CropImage> {
     }
   }
 
-  double _getImageRatioOLD(final double maxWidth, final double maxHeight) => controller.getImage()!.width / controller.getImage()!.height;
 
   double _getImageRatio(double maxWidth, double maxHeight) {
   final image = controller.getImage()!;
@@ -256,30 +255,6 @@ class _CropImageState extends State<CropImage> {
 
   return rotatedWidth / rotatedHeight;
 }
-  
-  double _getWidthOLD(final double maxWidth, final double maxHeight) {
-    double imageRatio = _getImageRatio(maxWidth, maxHeight);
-    final screenRatio = maxWidth / maxHeight;
-    if (controller.value.rotation.isSideways) {
-      imageRatio = 1 / imageRatio;
-    }
-    if (imageRatio > screenRatio) {
-      return maxWidth;
-    }
-    return maxHeight * imageRatio;
-  }
-
-  double _getHeightOLD(final double maxWidth, final double maxHeight) {
-    double imageRatio = _getImageRatio(maxWidth, maxHeight);
-    final screenRatio = maxWidth / maxHeight;
-    if (controller.value.rotation.isSideways) {
-      imageRatio = 1 / imageRatio;
-    }
-    if (imageRatio < screenRatio) {
-      return maxHeight;
-    }
-    return maxWidth / imageRatio;
-  }
 
   double _getWidth(double maxWidth, double maxHeight) {
   final image = controller.getImage()!;
@@ -564,8 +539,8 @@ class _TouchPoint {
 }
 
 // FIXME: shouldn't be repainted each time the grid moves, should it?
-class _RotatedImagePainter extends CustomPainter {
-  _RotatedImagePainter(this.image, this.rotation);
+class _RotatedImagePainterOLD extends CustomPainter {
+  _RotatedImagePainterOLD(this.image, this.rotation);
 
   final ui.Image image;
   final CropRotation rotation;
@@ -621,8 +596,54 @@ void paint(Canvas canvas, Size size) {
 }
 
   @override
-  bool shouldRepaint(covariant _RotatedImagePainter oldDelegate) {
+  bool shouldRepaint(covariant _RotatedImagePainterOLD oldDelegate) {
     return oldDelegate.rotation.degrees != rotation.degrees ||
         oldDelegate.image != image;
+  }
+}
+
+///-----\
+
+class _RotatedImagePainter extends CustomPainter {
+  final ui.Image image;
+  final CropRotation rotation;
+
+  _RotatedImagePainter(this.image, this.rotation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+
+    final double angle = rotation.radians;
+
+    // center of canvas
+    final Offset center = Offset(size.width / 2, size.height / 2);
+
+    canvas.save();
+
+    // move origin to center
+    canvas.translate(center.dx, center.dy);
+
+    // rotate around center
+    canvas.rotate(angle);
+
+    // draw image centered
+    final Rect src =
+        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
+
+    final Rect dst = Rect.fromCenter(
+      center: Offset.zero,
+      width: size.width,
+      height: size.height,
+    );
+
+    canvas.drawImageRect(image, src, dst, paint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _RotatedImagePainter oldDelegate) {
+    return oldDelegate.rotation != rotation || oldDelegate.image != image;
   }
 }
