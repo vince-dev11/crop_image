@@ -242,9 +242,22 @@ class _CropImageState extends State<CropImage> {
     }
   }
 
-  double _getImageRatio(final double maxWidth, final double maxHeight) => controller.getImage()!.width / controller.getImage()!.height;
+  double _getImageRatioOLD(final double maxWidth, final double maxHeight) => controller.getImage()!.width / controller.getImage()!.height;
 
-  double _getWidth(final double maxWidth, final double maxHeight) {
+  double _getImageRatio(double maxWidth, double maxHeight) {
+  final image = controller.getImage()!;
+  final angle = controller.rotation.radians.abs();
+
+  final w = image.width.toDouble();
+  final h = image.height.toDouble();
+
+  final rotatedWidth = w * math.cos(angle) + h * math.sin(angle);
+  final rotatedHeight = h * math.cos(angle) + w * math.sin(angle);
+
+  return rotatedWidth / rotatedHeight;
+}
+  
+  double _getWidthOLD(final double maxWidth, final double maxHeight) {
     double imageRatio = _getImageRatio(maxWidth, maxHeight);
     final screenRatio = maxWidth / maxHeight;
     if (controller.value.rotation.isSideways) {
@@ -256,7 +269,7 @@ class _CropImageState extends State<CropImage> {
     return maxHeight * imageRatio;
   }
 
-  double _getHeight(final double maxWidth, final double maxHeight) {
+  double _getHeightOLD(final double maxWidth, final double maxHeight) {
     double imageRatio = _getImageRatio(maxWidth, maxHeight);
     final screenRatio = maxWidth / maxHeight;
     if (controller.value.rotation.isSideways) {
@@ -267,6 +280,46 @@ class _CropImageState extends State<CropImage> {
     }
     return maxWidth / imageRatio;
   }
+
+  double _getWidth(double maxWidth, double maxHeight) {
+  final image = controller.getImage()!;
+  final angle = controller.rotation.radians.abs();
+
+  final w = image.width.toDouble();
+  final h = image.height.toDouble();
+
+  final rotatedWidth = w * math.cos(angle) + h * math.sin(angle);
+  final rotatedHeight = h * math.cos(angle) + w * math.sin(angle);
+
+  final ratio = rotatedWidth / rotatedHeight;
+  final screenRatio = maxWidth / maxHeight;
+
+  if (ratio > screenRatio) {
+    return maxWidth;
+  }
+
+  return maxHeight * ratio;
+}
+  
+  double _getHeight(double maxWidth, double maxHeight) {
+  final image = controller.getImage()!;
+  final angle = controller.rotation.radians.abs();
+
+  final w = image.width.toDouble();
+  final h = image.height.toDouble();
+
+  final rotatedWidth = w * math.cos(angle) + h * math.sin(angle);
+  final rotatedHeight = h * math.cos(angle) + w * math.sin(angle);
+
+  final ratio = rotatedWidth / rotatedHeight;
+  final screenRatio = maxWidth / maxHeight;
+
+  if (ratio < screenRatio) {
+    return maxHeight;
+  }
+
+  return maxWidth / ratio;
+}
 
   @override
   Widget build(BuildContext context) => Center(
