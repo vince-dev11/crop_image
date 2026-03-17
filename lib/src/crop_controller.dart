@@ -258,6 +258,95 @@ void rotate(double degrees) {
   required final CropRotation rotation,
   required final ui.Image image,
   final CustomPainter? overlayPainter,
+  final double margin = 0,
+}) async {
+  final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+  final Canvas canvas = Canvas(pictureRecorder);
+
+  // 👉 Original crop size
+  final double rawWidth = crop.width * image.width;
+  final double rawHeight = crop.height * image.height;
+
+  final double angle = rotation.radians.abs();
+
+  // 👉 FIX 1: expand crop size to fit rotated image
+  final double cropWidth =
+      rawWidth * math.cos(angle) + rawHeight * math.sin(angle);
+
+  final double cropHeight =
+      rawWidth * math.sin(angle) + rawHeight * math.cos(angle);
+
+  double factor = 1;
+
+  if (maxSize != null) {
+    if (cropWidth > maxSize || cropHeight > maxSize) {
+      if (cropWidth >= cropHeight) {
+        factor = maxSize / cropWidth;
+      } else {
+        factor = maxSize / cropHeight;
+      }
+    }
+  }
+
+  final Offset cropCenter = Offset(
+    crop.center.dx * image.width,
+    crop.center.dy * image.height,
+  );
+
+  final double outputWidth = cropWidth * factor;
+  final double outputHeight = cropHeight * factor;
+
+  final double finalWidth = outputWidth + (margin * 2);
+  final double finalHeight = outputHeight + (margin * 2);
+
+  // 👉 White background (margin area)
+  final Paint bgPaint = Paint()..color = const Color(0xFFFFFFFF);
+  canvas.drawRect(
+    Rect.fromLTWH(0, 0, finalWidth, finalHeight),
+    bgPaint,
+  );
+
+  canvas.save();
+
+  // 👉 FIX 2: correct transform order
+  canvas.translate(margin, margin); // move into margin
+  canvas.translate(outputWidth / 2, outputHeight / 2); // center of image
+  canvas.rotate(rotation.radians);
+  canvas.translate(-outputWidth / 2, -outputHeight / 2);
+
+  // 👉 Draw using ORIGINAL crop (important!)
+  canvas.drawImageRect(
+    image,
+    Rect.fromCenter(
+      center: cropCenter,
+      width: rawWidth,
+      height: rawHeight,
+    ),
+    Rect.fromLTWH(
+      0,
+      0,
+      outputWidth,
+      outputHeight,
+    ),
+    Paint()..filterQuality = quality,
+  );
+
+  canvas.restore();
+
+  overlayPainter?.paint(canvas, ui.Size(finalWidth, finalHeight));
+
+  return await pictureRecorder.endRecording().toImage(
+        finalWidth.round(),
+        finalHeight.round(),
+      );
+}
+  static Future<ui.Image> getCroppedBitmap1({
+  final double? maxSize,
+  final ui.FilterQuality quality = FilterQuality.high,
+  required final Rect crop,
+  required final CropRotation rotation,
+  required final ui.Image image,
+  final CustomPainter? overlayPainter,
   final double margin = 0, // 👈 ADD THIS
 }) async {
   final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();

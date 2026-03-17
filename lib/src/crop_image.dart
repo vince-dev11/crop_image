@@ -564,6 +564,7 @@ class _RotatedImagePainter extends CustomPainter {
     final center = size.center(Offset.zero);
 
     canvas.translate(center.dx, center.dy);
+    
     canvas.rotate(angle);
     canvas.translate(-center.dx, -center.dy);
 
