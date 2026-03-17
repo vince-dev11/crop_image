@@ -529,76 +529,14 @@ class _TouchPoint {
 }
 
 // FIXME: shouldn't be repainted each time the grid moves, should it?
-class _RotatedImagePainterOLD extends CustomPainter {
-  _RotatedImagePainterOLD(this.image, this.rotation);
-
-  final ui.Image image;
-  final CropRotation rotation;
-
-  final Paint _paint = Paint()..filterQuality = FilterQuality.high;
-
-  @override
-void paint(Canvas canvas, Size size) {
-  final center = Offset(size.width / 2, size.height / 2);
-
-  canvas.save();
-
-  /// move to center
-  canvas.translate(center.dx, center.dy);
-
-  /// rotate
-  canvas.rotate(rotation.radians);
-
-  /// calculate scale so rotated image fills canvas
-  final imageRatio = image.width / image.height;
-  final canvasRatio = size.width / size.height;
-
-  double drawWidth;
-  double drawHeight;
-
-  if (imageRatio > canvasRatio) {
-    drawHeight = size.height;
-    drawWidth = drawHeight * imageRatio;
-  } else {
-    drawWidth = size.width;
-    drawHeight = drawWidth / imageRatio;
-  }
-
-  final rect = Rect.fromCenter(
-    center: Offset.zero,
-    width: drawWidth,
-    height: drawHeight,
-  );
-
-  canvas.drawImageRect(
-    image,
-    Rect.fromLTWH(
-      0,
-      0,
-      image.width.toDouble(),
-      image.height.toDouble(),
-    ),
-    rect,
-    _paint,
-  );
-
-  canvas.restore();
-}
-
-  @override
-  bool shouldRepaint(covariant _RotatedImagePainterOLD oldDelegate) {
-    return oldDelegate.rotation.degrees != rotation.degrees ||
-        oldDelegate.image != image;
-  }
-}
 
 ///-----\
 
-class _RotatedImagePainter1 extends CustomPainter {
+class _RotatedImagePainter extends CustomPainter {
   final ui.Image image;
   final CropRotation rotation;
 
-  _RotatedImagePainter1(this.image, this.rotation);
+  _RotatedImagePainter(this.image, this.rotation);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -635,61 +573,8 @@ class _RotatedImagePainter1 extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RotatedImagePainter1 oldDelegate) {
-    return oldDelegate.rotation != rotation || oldDelegate.image != image;
-  }
-}
-
-class _RotatedImagePainter extends CustomPainter {
-  final ui.Image image;
-  final CropRotation rotation;
-
-  _RotatedImagePainter(this.image, this.rotation);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..filterQuality = FilterQuality.high;
-
-    final angle = rotation.radians;
-
-    final w = image.width.toDouble();
-    final h = image.height.toDouble();
-
-    /// Calculate rotated bounding box
-    final rotatedWidth = w * math.cos(angle).abs() + h * math.sin(angle).abs();
-    final rotatedHeight = h * math.cos(angle).abs() + w * math.sin(angle).abs();
-
-    /// scale so rotated image fills canvas
-    final scaleX = size.width / rotatedWidth;
-    final scaleY = size.height / rotatedHeight;
-    final scale = math.max(scaleX, scaleY);
-
-    final center = size.center(Offset.zero);
-
-    canvas.save();
-
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(angle);
-    canvas.scale(scale);
-
-    final rect = Rect.fromCenter(
-      center: Offset.zero,
-      width: w,
-      height: h,
-    );
-
-    canvas.drawImageRect(
-      image,
-      Rect.fromLTWH(0, 0, w, h),
-      rect,
-      paint,
-    );
-
-    canvas.restore();
-  }
-
-  @override
   bool shouldRepaint(covariant _RotatedImagePainter oldDelegate) {
     return oldDelegate.rotation != rotation || oldDelegate.image != image;
   }
 }
+
