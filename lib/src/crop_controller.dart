@@ -232,6 +232,7 @@ void rotate(double degrees) {
     final double? maxSize,
     final ui.FilterQuality quality = FilterQuality.high,
     final CustomPainter? overlayPainter,
+    final double? margin = 0,
   }) async =>
       getCroppedBitmap(
         maxSize: maxSize,
@@ -240,6 +241,7 @@ void rotate(double degrees) {
         rotation: value.rotation,
         image: _bitmap!,
         overlayPainter: overlayPainter,
+        margin: margin!
       );
 
   /// Returns the bitmap cropped with parameters.
@@ -250,6 +252,86 @@ void rotate(double degrees) {
   /// The [crop] `Rect` is normalized to (0, 0) x (1, 1).
   /// You can provide the [quality] used in the resizing operation.
   static Future<ui.Image> getCroppedBitmap({
+  final double? maxSize,
+  final ui.FilterQuality quality = FilterQuality.high,
+  required final Rect crop,
+  required final CropRotation rotation,
+  required final ui.Image image,
+  final CustomPainter? overlayPainter,
+  final double margin = 0, // 👈 ADD THIS
+}) async {
+  final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+  final Canvas canvas = Canvas(pictureRecorder);
+
+  final double cropWidth = crop.width * image.width;
+  final double cropHeight = crop.height * image.height;
+
+  double factor = 1;
+
+  if (maxSize != null) {
+    if (cropWidth > maxSize || cropHeight > maxSize) {
+      if (cropWidth >= cropHeight) {
+        factor = maxSize / cropWidth;
+      } else {
+        factor = maxSize / cropHeight;
+      }
+    }
+  }
+
+  final Offset cropCenter = Offset(
+    crop.center.dx * image.width,
+    crop.center.dy * image.height,
+  );
+
+  final double outputWidth = cropWidth * factor;
+  final double outputHeight = cropHeight * factor;
+
+  // 👉 NEW: include margin in final canvas size
+  final double finalWidth = outputWidth + (margin * 2);
+  final double finalHeight = outputHeight + (margin * 2);
+
+  // 👉 Paint white background
+  final Paint bgPaint = Paint()..color = const Color(0xFFFFFFFF);
+  canvas.drawRect(
+    Rect.fromLTWH(0, 0, finalWidth, finalHeight),
+    bgPaint,
+  );
+
+  canvas.save();
+
+  // 👉 Move to center INCLUDING margin offset
+  canvas.translate(finalWidth / 2, finalHeight / 2);
+
+  canvas.rotate(rotation.radians);
+
+  canvas.translate(-outputWidth / 2, -outputHeight / 2);
+
+  canvas.drawImageRect(
+    image,
+    Rect.fromCenter(
+      center: cropCenter,
+      width: cropWidth,
+      height: cropHeight,
+    ),
+    Rect.fromLTWH(
+      0,
+      0,
+      outputWidth,
+      outputHeight,
+    ),
+    Paint()..filterQuality = quality,
+  );
+
+  canvas.restore();
+
+  overlayPainter?.paint(canvas, ui.Size(finalWidth, finalHeight));
+
+  return await pictureRecorder.endRecording().toImage(
+        finalWidth.round(),
+        finalHeight.round(),
+      );
+}
+  static Future<ui.Image> getCroppedBitmapOLD({
   final double? maxSize,
   final ui.FilterQuality quality = FilterQuality.high,
   required final Rect crop,
@@ -329,12 +411,14 @@ void rotate(double degrees) {
   Future<Image> croppedImage({
     ui.FilterQuality quality = FilterQuality.high,
     final CustomPainter? overlayPainter,
+    double margin = 0
   }) async {
     return Image(
       image: UiImageProvider(
         await croppedBitmap(
           quality: quality,
           overlayPainter: overlayPainter,
+          margin: margin
         ),
       ),
       fit: BoxFit.contain,
