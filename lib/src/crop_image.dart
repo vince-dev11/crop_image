@@ -243,18 +243,6 @@ class _CropImageState extends State<CropImage> {
   }
 
 
-  double _getImageRatio(double maxWidth, double maxHeight) {
-  final image = controller.getImage()!;
-  final angle = controller.rotation.radians.abs();
-
-  final w = image.width.toDouble();
-  final h = image.height.toDouble();
-
-  final rotatedWidth = w * math.cos(angle) + h * math.sin(angle);
-  final rotatedHeight = h * math.cos(angle) + w * math.sin(angle);
-
-  return rotatedWidth / rotatedHeight;
-}
 
   double _getWidth(double maxWidth, double maxHeight) {
   final image = controller.getImage()!;
@@ -606,11 +594,11 @@ void paint(Canvas canvas, Size size) {
 
 ///-----\
 
-class _RotatedImagePainter extends CustomPainter {
+class _RotatedImagePainter1 extends CustomPainter {
   final ui.Image image;
   final CropRotation rotation;
 
-  _RotatedImagePainter(this.image, this.rotation);
+  _RotatedImagePainter1(this.image, this.rotation);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -642,6 +630,60 @@ class _RotatedImagePainter extends CustomPainter {
     canvas.translate(-center.dx, -center.dy);
 
     canvas.drawImageRect(image, inputSubrect, outputSubrect, paint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _RotatedImagePainter1 oldDelegate) {
+    return oldDelegate.rotation != rotation || oldDelegate.image != image;
+  }
+}
+
+class _RotatedImagePainter extends CustomPainter {
+  final ui.Image image;
+  final CropRotation rotation;
+
+  _RotatedImagePainter(this.image, this.rotation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..filterQuality = FilterQuality.high;
+
+    final angle = rotation.radians;
+
+    final w = image.width.toDouble();
+    final h = image.height.toDouble();
+
+    /// Calculate rotated bounding box
+    final rotatedWidth = w * math.cos(angle).abs() + h * math.sin(angle).abs();
+    final rotatedHeight = h * math.cos(angle).abs() + w * math.sin(angle).abs();
+
+    /// scale so rotated image fills canvas
+    final scaleX = size.width / rotatedWidth;
+    final scaleY = size.height / rotatedHeight;
+    final scale = math.max(scaleX, scaleY);
+
+    final center = size.center(Offset.zero);
+
+    canvas.save();
+
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+    canvas.scale(scale);
+
+    final rect = Rect.fromCenter(
+      center: Offset.zero,
+      width: w,
+      height: h,
+    );
+
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, w, h),
+      rect,
+      paint,
+    );
 
     canvas.restore();
   }
