@@ -297,14 +297,19 @@ void rotate(double degrees) {
     bgPaint,
   );
 
-  canvas.save();
+canvas.save();
 
-  // 👉 Move to center INCLUDING margin offset
-  canvas.translate(finalWidth / 2, finalHeight / 2);
+// 👉 Step 1: move inside margin
+canvas.translate(margin, margin);
 
-  canvas.rotate(rotation.radians);
+// 👉 Step 2: move to IMAGE center (not canvas center)
+canvas.translate(outputWidth / 2, outputHeight / 2);
 
-  canvas.translate(-outputWidth / 2, -outputHeight / 2);
+// 👉 Step 3: rotate around image center
+canvas.rotate(rotation.radians);
+
+// 👉 Step 4: move back
+canvas.translate(-outputWidth / 2, -outputHeight / 2);
 
   canvas.drawImageRect(
     image,
